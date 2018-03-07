@@ -1,4 +1,5 @@
 package snake;
+
 // Clase Board.java : Maneja el tablero y graficos sobre la pantalla
 // Jose Fernando Flores
 
@@ -12,7 +13,15 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
+import java.io.BufferedReader;
+import java.io.DataOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.net.Socket;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
+import java.util.regex.Pattern;
+
 import javax.swing.JPanel;
 import javax.swing.Timer;
 
@@ -27,8 +36,12 @@ public class Board extends JPanel implements ActionListener {
     private static int speed = 80;
     private Snake player1;
     private int playerScore;
+	private Socket socket;
+	private BufferedReader br;
+	private DataOutputStream serverStream;
+	private BufferedReader serverBuffer;
     
-    public Board() {
+    public Board() throws UnknownHostException, IOException {
         playerScore = 0;
         addKeyListener(new Keys());
         setBackground(Color.BLACK);
@@ -36,13 +49,23 @@ public class Board extends JPanel implements ActionListener {
         setPreferredSize(new Dimension(w, h));
         timer = new Timer(speed, this);
         timer.start();
+        socket = new Socket("localhost", 2430);
+        br = new BufferedReader(new InputStreamReader(System.in));
+		serverStream = new DataOutputStream(socket.getOutputStream());
+		serverBuffer = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+		
         init();
     }
 
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
-        paintIt(g);
+        try {
+			paintIt(g);
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
     }
 
     public void init() {
@@ -83,7 +106,7 @@ public class Board extends JPanel implements ActionListener {
         g.drawString(message, (w - metrics.stringWidth(message))/2,h/2);
     }
 
-    public void paintIt(Graphics g) {
+    public void paintIt(Graphics g) throws IOException {
         g.setColor(Color.BLACK);
         g.fillRect(0, 0, w, h);
         
@@ -121,14 +144,49 @@ public class Board extends JPanel implements ActionListener {
 
         snake_array.add(0, tail);
 
-        System.out.println("coordinates: " + snake_array.toString());
+        //System.out.println("coordinates: " + snake_array.toString());
+        serverStream.writeBytes(snake_array.toString() + '\n');
+        String textoDevuelto = serverBuffer.readLine();
+        //System.out.println(textoDevuelto);
         for(int i = 0; i < snake_array.size(); i++) {
             ArrayList<Integer> c = snake_array.get(i);
             paint_cell(c.get(0), c.get(1),player1.getColor(),g);
         }
-
+       
+        String[] snakesJugadores = textoDevuelto.split(Pattern.quote(" | "));
+        for(int j = 0; j < snakesJugadores.length; j++) {
+        	String jugadorAjeno = snakesJugadores[j];
+	        if (!jugadorAjeno.equals("")) {
+	        	ArrayList<ArrayList<Integer>> otherPlayerSnake = convertToSnake(jugadorAjeno);
+		        for(int i = 0; i < otherPlayerSnake.size(); i++) {
+		            ArrayList<Integer> c = otherPlayerSnake.get(i);
+		            paint_cell(c.get(0), c.get(1),player1.getColor(),g);
+		        }
+	        }
+        }
         paint_cell(food.getX(), food.getY(), Color.MAGENTA,g);                    
         Toolkit.getDefaultToolkit().sync();
+    }
+    
+    public ArrayList<ArrayList<Integer>> convertToSnake(String snakeString) {
+    	ArrayList<ArrayList<Integer>> snake = new ArrayList<ArrayList<Integer>>();
+    	String snakeS = snakeString.substring(1, snakeString.length()-1);
+    	//System.out.println(snakeS);
+    	String[] coordinates = snakeS.split(" ; ");
+    	
+    	for(int i = 0; i < coordinates.length; i++) {
+    	 
+            ArrayList<Integer> c = new ArrayList<Integer>();
+            String[] xy = coordinates[i].substring(1, coordinates[i].length()-1).split(", ");
+            int x = Integer.parseInt(xy[0]);
+            int y = Integer.parseInt(xy[1]);
+            
+            c.add(x);
+            c.add(y);
+            snake.add(c);
+        }
+        
+    	return snake;
     }
 
     @Override
