@@ -9,7 +9,7 @@ public class Snake {
 
     public Snake(int startY, Color color) {
         snake_array = new ArrayList<>();
-        int length = 5;
+        int length = 10;
         for(int i = length-1; i>=0; i--){
             ArrayList<Integer> pair = new ArrayList<>();
             pair.add(i);
