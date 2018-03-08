@@ -1,4 +1,5 @@
- import java.io.BufferedReader;
+import java.awt.Point;
+import java.io.BufferedReader;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -16,9 +17,19 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.regex.Pattern;
 
+import com.sun.javafx.css.converters.ColorConverter;
+import java.util.*;
+import com.sun.prism.paint.Color;
+
 public class ServerGame {
 	static boolean[] jugadores = {false, false, false, false};
 	static String[] coordenadas = {"","","",""};
+	static Color[] colores = {Color.RED, Color.GREEN, Color.BLUE, Color.WHITE};
+	static Point food = new Point(100, 100);
+	static private int w= 700;
+	static private int h = 600;
+	static private int cw = 10;
+			
 	public static void main(String[] args) throws IOException {
 		System.out.println("Servidor encendido");
 		int cont = 0;
@@ -68,6 +79,10 @@ public class ServerGame {
 	public static void GameRequest(Socket socket, int player) {
 		System.out.println("Jugador "+player+" conectado");
 		BufferedReader entrada;
+		int rgb1 = colores[0].getIntArgbPre();
+		int rgb2 = colores[1].getIntArgbPre();
+		int rgb3 = colores[2].getIntArgbPre();
+		int rgb4 = colores[3].getIntArgbPre();
 		while (true) {
 
 			try {
@@ -75,36 +90,54 @@ public class ServerGame {
 				DataOutputStream outToClient = new DataOutputStream(socket.getOutputStream());
 				
 				String textoEntrada = entrada.readLine().trim();
-				coordenadas[player-1] = textoEntrada;
-				//System.out.println("Player "+player+": "+textoEntrada);
-				
-				if (player ==1) {
-					outToClient.writeBytes(coordenadas[1].replaceAll(Pattern.quote("], ["), "] ; [")+" | ");
-					outToClient.writeBytes(coordenadas[2].replaceAll(Pattern.quote("], ["), "] ; [")+" | ");
-					outToClient.writeBytes(coordenadas[3].replaceAll(Pattern.quote("], ["), "] ; [")+"\n");
-				} else if (player == 2){
-					outToClient.writeBytes(coordenadas[0].replaceAll(Pattern.quote("], ["), "] ; [")+" | ");
-					outToClient.writeBytes(coordenadas[2].replaceAll(Pattern.quote("], ["), "] ; [")+" | ");
-					outToClient.writeBytes(coordenadas[3].replaceAll(Pattern.quote("], ["), "] ; [")+"\n");
-				} else if (player == 3){
-					outToClient.writeBytes(coordenadas[0].replaceAll(Pattern.quote("], ["), "] ; [")+" | ");
-					outToClient.writeBytes(coordenadas[1].replaceAll(Pattern.quote("], ["), "] ; [")+" | ");
-					outToClient.writeBytes(coordenadas[3].replaceAll(Pattern.quote("], ["), "] ; [")+"\n");
-				} else if (player == 4){
-					outToClient.writeBytes(coordenadas[0].replaceAll(Pattern.quote("], ["), "] ; [")+" | ");
-					outToClient.writeBytes(coordenadas[1].replaceAll(Pattern.quote("], ["), "] ; [")+" | ");
-					outToClient.writeBytes(coordenadas[2].replaceAll(Pattern.quote("], ["), "] ; [")+"\n");
+				if (textoEntrada.equals("Color")) { 
+					
+					int rgb = colores[player-1].getIntArgbPre();
+					outToClient.writeBytes(rgb +" , "+player +"\n");
+				} else if (textoEntrada.equals("New Food")) { 
+					
+					int x = (int) Math.round(Math.random()*(w-cw)/cw);
+			        int y = (int) Math.round(Math.random()*(h-cw)/cw);
+			        food.setLocation(x, y);
+					outToClient.writeBytes(x+" , "+y+"\n");
+				} else if (textoEntrada.equals("Food")) { 
+					
+					int x = (int) food.getX();
+			        int y = (int) food.getY();
+			        food.setLocation(x, y);
+					outToClient.writeBytes(x+" , "+y+"\n");
+				} else {
+					coordenadas[player-1] = textoEntrada;
+					//System.out.println("Player "+player+": "+textoEntrada);
+					
+					if (player ==1) {
+						outToClient.writeBytes(rgb2 + " %  "+coordenadas[1].replaceAll(Pattern.quote("], ["), "] ; [")+" | ");
+						outToClient.writeBytes(rgb3 + " %  "+coordenadas[2].replaceAll(Pattern.quote("], ["), "] ; [")+" | ");
+						outToClient.writeBytes(rgb4 + " %  "+coordenadas[3].replaceAll(Pattern.quote("], ["), "] ; [")+"\n");
+					} else if (player == 2){
+						outToClient.writeBytes(rgb1 + " %  "+coordenadas[0].replaceAll(Pattern.quote("], ["), "] ; [")+" | ");
+						outToClient.writeBytes(rgb3 + " %  "+coordenadas[2].replaceAll(Pattern.quote("], ["), "] ; [")+" | ");
+						outToClient.writeBytes(rgb4 + " %  "+coordenadas[3].replaceAll(Pattern.quote("], ["), "] ; [")+"\n");
+					} else if (player == 3){
+						outToClient.writeBytes(rgb1 + " %  "+coordenadas[0].replaceAll(Pattern.quote("], ["), "] ; [")+" | ");
+						outToClient.writeBytes(rgb2 + " %  "+coordenadas[1].replaceAll(Pattern.quote("], ["), "] ; [")+" | ");
+						outToClient.writeBytes(rgb4 + " %  "+coordenadas[3].replaceAll(Pattern.quote("], ["), "] ; [")+"\n");
+					} else if (player == 4){
+						outToClient.writeBytes(rgb1 + " %  "+coordenadas[0].replaceAll(Pattern.quote("], ["), "] ; [")+" | ");
+						outToClient.writeBytes(rgb2 + " %  "+coordenadas[1].replaceAll(Pattern.quote("], ["), "] ; [")+" | ");
+						outToClient.writeBytes(rgb3 + " %  "+coordenadas[2].replaceAll(Pattern.quote("], ["), "] ; [")+"\n");
+					}
 				}
-				
 				//outToClient.writeBytes("221 closing connection \n");
 			} catch (IOException e) {
 				// TODO Auto-generated catch block
 				coordenadas[player-1] = "";
 				jugadores[player-1] = false;
-				e.printStackTrace();
+				//e.printStackTrace();
 				break;
 			}
 		}
 		
 	}
 }
+
