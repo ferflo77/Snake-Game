@@ -1,5 +1,6 @@
 package snake;
 
+
 // Clase Board.java : Maneja el tablero y graficos sobre la pantalla
 // Jose Fernando Flores
 
@@ -33,7 +34,7 @@ public class Board extends JPanel implements ActionListener {
     private String direction;
     private Food food;
     private Timer timer;
-    private static int speed = 80;
+    private static int speed = 100;
     private Snake player1;
     private int playerScore;
 	private Socket socket;
@@ -71,7 +72,7 @@ public class Board extends JPanel implements ActionListener {
     public void init() {
       direction = "right";
       create_snake();
-      create_food();
+      create_food(true);
     }
 
     public void paint_cell(int x, int y, Color color, Graphics g) {
@@ -80,13 +81,41 @@ public class Board extends JPanel implements ActionListener {
     }
 
     public void create_snake() {
-       player1 = new Snake(0,Color.CYAN);
+    	try {
+			serverStream.writeBytes("Color\n");
+			String textoDevuelto = serverBuffer.readLine();
+			int colorNum = Integer.parseInt(textoDevuelto.split(Pattern.quote(" , "))[0]);
+			int player = Integer.parseInt(textoDevuelto.split(Pattern.quote(" , "))[1]);
+			Color color = new Color(colorNum);
+		    player1 = new Snake(player * 10,color);
+		    playerScore = 0;
+		} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+        
     }
 
-    public void create_food() {
-        int x = (int) Math.round(Math.random()*(w-cw)/cw);
-        int y = (int) Math.round(Math.random()*(h-cw)/cw);
-        food = new Food(x,y);
+    public void create_food(boolean newFood) {
+    	try {
+	    	if (newFood) {
+				serverStream.writeBytes("New Food\n");
+				
+	    	} else {
+	    		serverStream.writeBytes("Food\n");
+	    	}
+    	
+    	
+	    	String textoDevuelto = serverBuffer.readLine();
+			String[] xy = textoDevuelto.split(Pattern.quote(" , "));
+	        int x = Integer.parseInt(xy[0]);
+	        int y = Integer.parseInt(xy[1]);
+	        food = new Food(x,y);
+    	} catch (IOException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+    	
     }
 
     public boolean check_collision(int x, int y, ArrayList<ArrayList<Integer>> array) {
@@ -121,10 +150,21 @@ public class Board extends JPanel implements ActionListener {
         else if("up".equals(direction)) ny--;
         else if("down".equals(direction)) ny++;
 
-        if(nx == -1 || nx == w/cw || ny == -1 || ny == h/cw || check_collision(nx, ny,snake_array)) {
-            System.out.println("GAME OVER!");
-            init();
-            return;
+        if(nx == -1 || nx == w/cw || ny == -1 || ny == h/cw) {
+            //System.out.println("GAME OVER!");
+            //create_snake();
+        	if (nx==-1) nx = w/cw-1; 
+        	if (ny==-1) ny = h/cw-1; 
+        	if (nx==w/cw) nx = 0; 
+        	if (ny==h/cw) ny = 0; 
+            //direction = "right";
+            //return;
+        }
+        
+        if (check_collision(nx, ny,snake_array)) {
+        	create_snake();
+        	direction = "right";
+        	return ;
         }
 
         if(nx == food.getX() && ny == food.getY()) {                  
@@ -132,7 +172,7 @@ public class Board extends JPanel implements ActionListener {
             tail.add(1, ny);
             playerScore+=1;
             System.out.println("SCORE: " + playerScore);
-            create_food();
+            create_food(true);
         }
         else {
             int tamanio = snake_array.size()-1;
@@ -155,22 +195,31 @@ public class Board extends JPanel implements ActionListener {
        
         String[] snakesJugadores = textoDevuelto.split(Pattern.quote(" | "));
         for(int j = 0; j < snakesJugadores.length; j++) {
-        	String jugadorAjeno = snakesJugadores[j];
-	        if (!jugadorAjeno.equals("")) {
+        	String color = snakesJugadores[j].split(Pattern.quote(" % "))[0];
+        	String jugadorAjeno = snakesJugadores[j].split(Pattern.quote(" % "))[1];
+        	if (!jugadorAjeno.equals(" ")) {
 	        	ArrayList<ArrayList<Integer>> otherPlayerSnake = convertToSnake(jugadorAjeno);
 		        for(int i = 0; i < otherPlayerSnake.size(); i++) {
 		            ArrayList<Integer> c = otherPlayerSnake.get(i);
-		            paint_cell(c.get(0), c.get(1),player1.getColor(),g);
+		            paint_cell(c.get(0), c.get(1),new Color(Integer.parseInt(color)),g);
 		        }
+		        
+		        if (check_collision(nx, ny,otherPlayerSnake)) {
+		        	create_snake();
+		        	direction = "right";
+		        	return ;
+		        }
+
 	        }
         }
+        create_food(false);
         paint_cell(food.getX(), food.getY(), Color.MAGENTA,g);                    
         Toolkit.getDefaultToolkit().sync();
     }
     
     public ArrayList<ArrayList<Integer>> convertToSnake(String snakeString) {
     	ArrayList<ArrayList<Integer>> snake = new ArrayList<ArrayList<Integer>>();
-    	String snakeS = snakeString.substring(1, snakeString.length()-1);
+    	String snakeS = snakeString.substring(2, snakeString.length()-1);
     	//System.out.println(snakeS);
     	String[] coordinates = snakeS.split(" ; ");
     	
